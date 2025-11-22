@@ -5,8 +5,8 @@ import (
 )
 
 // callHook safely calls a hook function if it's not nil
-func (s *Service) callHook(hook func(domain.User) error, u *domain.User) {
-	if hook != nil && u != nil {
-		go hook(*u)
+func (s *Service) callHook(hook func(domain.User) error, user *domain.User) {
+	if hook != nil && user != nil {
+		go hook(*user)
 	}
 }

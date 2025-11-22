@@ -208,9 +208,9 @@ type VerificationDatabaseHooksConfig struct {
 // =======================
 
 type HooksConfig struct {
-	OnUserCreated     func(user User) error
-	OnEmailVerified   func(user User) error
+	OnUserSignedUp    func(user User) error
 	OnUserLoggedIn    func(user User) error
+	OnEmailVerified   func(user User) error
 	OnChangedPassword func(user User) error
 	OnChangedEmail    func(user User) error
 }
