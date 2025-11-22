@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,7 +25,6 @@ func (s *VerificationService) CreateVerification(v *domain.Verification) error {
 	now := time.Now().UTC()
 	v.CreatedAt = now
 	v.UpdatedAt = now
-	slog.Debug("Setting ExpiresAt now...")
 	v.ExpiresAt = now.Add(time.Hour)
 
 	if s.config.DatabaseHooks.Verifications != nil && s.config.DatabaseHooks.Verifications.BeforeCreate != nil {

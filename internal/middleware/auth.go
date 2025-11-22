@@ -2,8 +2,6 @@ package middleware
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
 	"net/http"
 	"slices"
 
@@ -55,7 +53,6 @@ func CorsMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
-			slog.Debug(fmt.Sprintf("Origin: %s", origin))
 			allowed := slices.Contains(allowedOrigins, origin)
 
 			if allowed {
