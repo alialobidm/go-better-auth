@@ -184,7 +184,14 @@ func contructAuthService(config *domain.Config, db *gorm.DB) *auth.Service {
 	sessionService := auth.NewSessionService(config, db)
 	verificationService := auth.NewVerificationService(config, db)
 	tokenService := auth.NewTokenService(config)
-	authService := auth.NewService(config, userService, accountService, sessionService, verificationService, tokenService)
+	authService := auth.NewService(
+		config,
+		userService,
+		accountService,
+		sessionService,
+		verificationService,
+		tokenService,
+	)
 
 	return authService
 }
