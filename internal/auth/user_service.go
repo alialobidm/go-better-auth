@@ -35,7 +35,7 @@ func (s *UserService) CreateUser(user *domain.User) error {
 	}
 
 	if s.config.DatabaseHooks.Users != nil && s.config.DatabaseHooks.Users.AfterCreate != nil {
-		if err := s.config.DatabaseHooks.Users.AfterCreate(user); err != nil {
+		if err := s.config.DatabaseHooks.Users.AfterCreate(*user); err != nil {
 			return err
 		}
 	}
@@ -82,7 +82,7 @@ func (s *UserService) UpdateUser(user *domain.User) error {
 	}
 
 	if s.config.DatabaseHooks.Users != nil && s.config.DatabaseHooks.Users.AfterUpdate != nil {
-		if err := s.config.DatabaseHooks.Users.AfterUpdate(user); err != nil {
+		if err := s.config.DatabaseHooks.Users.AfterUpdate(*user); err != nil {
 			return err
 		}
 	}

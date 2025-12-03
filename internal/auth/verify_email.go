@@ -156,7 +156,7 @@ func (s *Service) SendVerificationEmail(userID string) error {
 			nil,
 		)
 		go func() {
-			if err := s.config.EmailVerification.SendVerificationEmail(u, url, token); err != nil {
+			if err := s.config.EmailVerification.SendVerificationEmail(*u, url, token); err != nil {
 				slog.Error("failed to send verification email", "user_id", u.ID, "error", err)
 			}
 		}()

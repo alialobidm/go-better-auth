@@ -118,7 +118,7 @@ type EmailPasswordConfig struct {
 	DisableSignUp            bool
 	RequireEmailVerification bool
 	AutoSignIn               bool
-	SendResetPassword        func(user *User, url string, token string) error
+	SendResetPassword        func(user User, url string, token string) error
 	ResetTokenExpiry         time.Duration
 	Password                 *PasswordConfig
 }
@@ -137,7 +137,7 @@ type PasswordConfig struct {
 // =======================
 
 type EmailVerificationConfig struct {
-	SendVerificationEmail func(user *User, url string, token string) error
+	SendVerificationEmail func(user User, url string, token string) error
 	AutoSignIn            bool
 	SendOnSignUp          bool
 	SendOnSignIn          bool
@@ -154,7 +154,7 @@ type UserConfig struct {
 
 type ChangeEmailConfig struct {
 	Enabled                     bool
-	SendEmailChangeVerification func(user *User, newEmail string, url string, token string) error
+	SendEmailChangeVerification func(user User, newEmail string, url string, token string) error
 }
 
 // =======================
@@ -188,28 +188,28 @@ type DatabaseHooksConfig struct {
 
 type UserDatabaseHooksConfig struct {
 	BeforeCreate func(user *User) error
-	AfterCreate  func(user *User) error
+	AfterCreate  func(user User) error
 	BeforeUpdate func(user *User) error
-	AfterUpdate  func(user *User) error
+	AfterUpdate  func(user User) error
 }
 
 type AccountDatabaseHooksConfig struct {
 	BeforeCreate func(account *Account) error
-	AfterCreate  func(account *Account) error
+	AfterCreate  func(account Account) error
 	BeforeUpdate func(account *Account) error
-	AfterUpdate  func(account *Account) error
+	AfterUpdate  func(account Account) error
 }
 
 type SessionDatabaseHooksConfig struct {
 	BeforeCreate func(session *Session) error
-	AfterCreate  func(session *Session) error
+	AfterCreate  func(session Session) error
 	BeforeUpdate func(session *Session) error
-	AfterUpdate  func(session *Session) error
+	AfterUpdate  func(session Session) error
 }
 
 type VerificationDatabaseHooksConfig struct {
 	BeforeCreate func(verification *Verification) error
-	AfterCreate  func(verification *Verification) error
+	AfterCreate  func(verification Verification) error
 }
 
 // =======================
@@ -220,8 +220,8 @@ type HooksConfig struct {
 	OnUserSignedUp    func(user User) error
 	OnUserLoggedIn    func(user User) error
 	OnEmailVerified   func(user User) error
-	OnEmailChanged    func(user User) error
 	OnPasswordChanged func(user User) error
+	OnEmailChanged    func(user User) error
 }
 
 // =======================

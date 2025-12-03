@@ -37,7 +37,7 @@ func (s *AccountService) CreateAccount(a *domain.Account) error {
 	}
 
 	if s.config.DatabaseHooks.Accounts != nil && s.config.DatabaseHooks.Accounts.AfterCreate != nil {
-		if err := s.config.DatabaseHooks.Accounts.AfterCreate(a); err != nil {
+		if err := s.config.DatabaseHooks.Accounts.AfterCreate(*a); err != nil {
 			return err
 		}
 	}
@@ -76,7 +76,7 @@ func (s *AccountService) UpdateAccount(account *domain.Account) error {
 	}
 
 	if s.config.DatabaseHooks.Accounts != nil && s.config.DatabaseHooks.Accounts.AfterUpdate != nil {
-		if err := s.config.DatabaseHooks.Accounts.AfterUpdate(account); err != nil {
+		if err := s.config.DatabaseHooks.Accounts.AfterUpdate(*account); err != nil {
 			return err
 		}
 	}

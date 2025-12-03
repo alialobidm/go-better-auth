@@ -38,7 +38,7 @@ func (s *VerificationService) CreateVerification(v *domain.Verification) error {
 	}
 
 	if s.config.DatabaseHooks.Verifications != nil && s.config.DatabaseHooks.Verifications.AfterCreate != nil {
-		if err := s.config.DatabaseHooks.Verifications.AfterCreate(v); err != nil {
+		if err := s.config.DatabaseHooks.Verifications.AfterCreate(*v); err != nil {
 			return err
 		}
 	}

@@ -89,7 +89,7 @@ func (s *Service) SignInWithEmailAndPassword(email string, password string, call
 					callbackURL,
 				)
 				go func() {
-					if err := s.config.EmailVerification.SendVerificationEmail(user, url, token); err != nil {
+					if err := s.config.EmailVerification.SendVerificationEmail(*user, url, token); err != nil {
 						slog.Error("failed to send verification email", "user_id", user.ID, "error", err)
 					}
 				}()

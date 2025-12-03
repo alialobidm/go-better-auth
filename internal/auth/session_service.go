@@ -20,7 +20,7 @@ func NewSessionService(config *domain.Config, db *gorm.DB) *SessionService {
 
 // CreateSession creates a new session for a user
 func (s *SessionService) CreateSession(userID string, token string) (*domain.Session, error) {
-	sess := &domain.Session{
+	session := &domain.Session{
 		ID:        uuid.NewString(),
 		UserID:    userID,
 		Token:     token,
@@ -30,22 +30,22 @@ func (s *SessionService) CreateSession(userID string, token string) (*domain.Ses
 	}
 
 	if s.config.DatabaseHooks.Sessions != nil && s.config.DatabaseHooks.Sessions.BeforeCreate != nil {
-		if err := s.config.DatabaseHooks.Sessions.BeforeCreate(sess); err != nil {
+		if err := s.config.DatabaseHooks.Sessions.BeforeCreate(session); err != nil {
 			return nil, err
 		}
 	}
 
-	if err := s.db.Create(sess).Error; err != nil {
+	if err := s.db.Create(session).Error; err != nil {
 		return nil, err
 	}
 
 	if s.config.DatabaseHooks.Sessions != nil && s.config.DatabaseHooks.Sessions.AfterCreate != nil {
-		if err := s.config.DatabaseHooks.Sessions.AfterCreate(sess); err != nil {
+		if err := s.config.DatabaseHooks.Sessions.AfterCreate(*session); err != nil {
 			return nil, err
 		}
 	}
 
-	return sess, nil
+	return session, nil
 }
 
 // GetSessionByUserID retrieves a session by the associated userID.

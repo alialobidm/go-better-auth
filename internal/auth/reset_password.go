@@ -57,7 +57,7 @@ func (s *Service) ResetPassword(email string, callbackURL *string) error {
 			&callbackURL,
 		)
 		go func() {
-			if err := s.config.EmailPassword.SendResetPassword(user, url, token); err != nil {
+			if err := s.config.EmailPassword.SendResetPassword(*user, url, token); err != nil {
 				slog.Error("failed to send verification email", "user_id", user.ID, "error", err)
 			}
 		}()
