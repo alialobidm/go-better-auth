@@ -154,7 +154,7 @@ func (auth *Auth) Handler() http.Handler {
 	r.Handle("POST", basePath+"/email-change", changeEmailRequest.Handler())
 	r.Handle("GET", basePath+"/me", auth.AuthMiddleware()(me.Handler()))
 
-	return r
+	return middleware.EndpointHooksMiddleware(auth.Config, authService)(r)
 }
 
 // Export middleware

@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"net/http"
 	"os"
 	"time"
 )
@@ -68,7 +69,7 @@ type ChangeEmailConfig struct {
 }
 
 // =======================
-// SessionConfig Config
+// Session Config
 // =======================
 
 type SessionConfig struct {
@@ -78,7 +79,7 @@ type SessionConfig struct {
 }
 
 // =======================
-// Trutsted Origins Config
+// Trusted Origins Config
 // =======================
 
 type TrustedOriginsConfig struct {
@@ -86,7 +87,26 @@ type TrustedOriginsConfig struct {
 }
 
 // =======================
-// DatabaseHooks Config
+// Endpoint Hooks Config
+// =======================
+
+type EndpointHookContext struct {
+	Path    string
+	Method  string
+	Body    map[string]any
+	Headers map[string]string
+	Query   map[string]string
+	Request *http.Request
+	User    *User
+}
+
+type EndpointHooksConfig struct {
+	Before func(ctx *EndpointHookContext) error
+	After  func(ctx *EndpointHookContext) error
+}
+
+// =======================
+// Database Hooks Config
 // =======================
 
 type DatabaseHooksConfig struct {
@@ -121,7 +141,7 @@ type VerificationDatabaseHooksConfig struct {
 }
 
 // =======================
-// EventHooks Config
+// Event Hooks Config
 // =======================
 
 type EventHooksConfig struct {
@@ -148,6 +168,7 @@ type Config struct {
 	User              UserConfig
 	Session           SessionConfig
 	TrustedOrigins    TrustedOriginsConfig
+	EndpointHooks     EndpointHooksConfig
 	DatabaseHooks     DatabaseHooksConfig
 	EventHooks        EventHooksConfig
 }
@@ -210,6 +231,7 @@ func NewConfig(opts ...ConfigOption) *Config {
 		TrustedOrigins: TrustedOriginsConfig{
 			Origins: []string{},
 		},
+		EndpointHooks: EndpointHooksConfig{},
 		DatabaseHooks: DatabaseHooksConfig{},
 		EventHooks:    EventHooksConfig{},
 	}
@@ -283,6 +305,12 @@ func WithSession(sessionConfig SessionConfig) ConfigOption {
 func WithTrustedOrigins(trustedOriginsConfig TrustedOriginsConfig) ConfigOption {
 	return func(c *Config) {
 		c.TrustedOrigins = trustedOriginsConfig
+	}
+}
+
+func WithEndpointHooks(endpointHooksConfig EndpointHooksConfig) ConfigOption {
+	return func(c *Config) {
+		c.EndpointHooks = endpointHooksConfig
 	}
 }
 
