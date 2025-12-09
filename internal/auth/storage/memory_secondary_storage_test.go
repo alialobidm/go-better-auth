@@ -8,10 +8,31 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/GoBetterAuth/go-better-auth/pkg/domain"
 )
 
-func TestNewMemoryStorage(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+// Helper function to create a memory storage with default config
+func newTestMemorySecondaryStorage() *MemorySecondaryStorage {
+	return NewMemorySecondaryStorage(&domain.SecondaryStorageMemoryConfig{
+		CleanupInterval: 1 * time.Minute,
+	})
+}
+
+// Helper function to assert any value is a string
+func assertString(t *testing.T, value any, expected string) {
+	t.Helper()
+	str, ok := value.(string)
+	if !ok {
+		t.Fatalf("expected string, got %T", value)
+	}
+	if str != expected {
+		t.Fatalf("expected '%s', got '%s'", expected, str)
+	}
+}
+
+func TestNewMemorySecondaryStorage(t *testing.T) {
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	if storage == nil {
@@ -28,48 +49,46 @@ func TestNewMemoryStorage(t *testing.T) {
 }
 
 func TestSet_Success(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
 	key := "test_key"
-	value := []byte("test_value")
+	value := "test_value"
 
 	err := storage.Set(ctx, key, value, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	stored, err := storage.Get(ctx, key)
+	stored, err := storage.Get(ctx, "test_key")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	if string(stored) != "test_value" {
-		t.Fatalf("expected 'test_value', got '%s'", string(stored))
-	}
+	assertString(t, stored, "test_value")
 }
 
 func TestSet_InvalidType(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
 
-	err := storage.Set(ctx, "key", "string_value", nil)
+	err := storage.Set(ctx, "key", []byte("byte_value"), nil)
 	if err == nil {
 		t.Fatal("expected error for invalid type, got nil")
 	}
 }
 
 func TestSet_ContextCancelled(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	err := storage.Set(ctx, "key", []byte("value"), nil)
+	err := storage.Set(ctx, "key", "value", nil)
 	if err == nil {
 		t.Fatal("expected context cancelled error, got nil")
 	}
@@ -80,27 +99,25 @@ func TestSet_ContextCancelled(t *testing.T) {
 }
 
 func TestGet_Success(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
 	key := "test_key"
-	value := []byte("test_value")
+	value := "test_value"
 
 	storage.Set(ctx, key, value, nil)
 
-	retrieved, err := storage.Get(ctx, key)
+	retrieved, err := storage.Get(ctx, "test_key")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	if string(retrieved) != "test_value" {
-		t.Fatalf("expected 'test_value', got '%s'", string(retrieved))
-	}
+	assertString(t, retrieved, "test_value")
 }
 
 func TestGet_KeyNotFound(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -112,7 +129,7 @@ func TestGet_KeyNotFound(t *testing.T) {
 }
 
 func TestGet_ContextCancelled(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -130,12 +147,12 @@ func TestGet_ContextCancelled(t *testing.T) {
 
 func TestGet_ExpiredEntry(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		storage := NewMemorySecondaryStorage()
+		storage := newTestMemorySecondaryStorage()
 		defer storage.Close()
 
 		ctx := context.Background()
 		key := "expiring_key"
-		value := []byte("expiring_value")
+		value := "expiring_value"
 		ttl := 10 * time.Millisecond
 
 		err := storage.Set(ctx, key, value, &ttl)
@@ -161,12 +178,12 @@ func TestGet_ExpiredEntry(t *testing.T) {
 }
 
 func TestDelete_Success(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
 	key := "test_key"
-	value := []byte("test_value")
+	value := "test_value"
 
 	storage.Set(ctx, key, value, nil)
 
@@ -182,7 +199,7 @@ func TestDelete_Success(t *testing.T) {
 }
 
 func TestDelete_KeyNotFound(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -194,7 +211,7 @@ func TestDelete_KeyNotFound(t *testing.T) {
 }
 
 func TestDelete_ContextCancelled(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -211,38 +228,30 @@ func TestDelete_ContextCancelled(t *testing.T) {
 }
 
 func TestValueMutation_Prevented(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
 	key := "test_key"
-	originalValue := []byte("original")
+	originalValue := "original"
 
 	storage.Set(ctx, key, originalValue, nil)
 
-	originalValue[0] = 'X'
-
 	retrieved, _ := storage.Get(ctx, key)
-	if string(retrieved) != "original" {
-		t.Fatalf("expected 'original', got '%s'. Value was mutated externally", string(retrieved))
-	}
-
-	retrieved[0] = 'Y'
+	assertString(t, retrieved, "original")
 
 	retrieved2, _ := storage.Get(ctx, key)
-	if string(retrieved2) != "original" {
-		t.Fatalf("expected 'original', got '%s'. Value was mutated through retrieval", string(retrieved2))
-	}
+	assertString(t, retrieved2, "original")
 }
 
 func TestSet_WithTTL(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		storage := NewMemorySecondaryStorage()
+		storage := newTestMemorySecondaryStorage()
 		defer storage.Close()
 
 		ctx := context.Background()
 		key := "ttl_key"
-		value := []byte("ttl_value")
+		value := "ttl_value"
 		ttl := 20 * time.Millisecond
 
 		err := storage.Set(ctx, key, value, &ttl)
@@ -251,14 +260,12 @@ func TestSet_WithTTL(t *testing.T) {
 		}
 
 		// Should exist immediately
-		retrieved, err := storage.Get(ctx, key)
+		retrieved, err := storage.Get(ctx, "ttl_key")
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
 
-		if string(retrieved) != "ttl_value" {
-			t.Fatalf("expected 'ttl_value', got '%s'", string(retrieved))
-		}
+		assertString(t, retrieved, "ttl_value")
 
 		// Wait just before expiration using fake time
 		time.Sleep(19 * time.Millisecond)
@@ -283,28 +290,26 @@ func TestSet_WithTTL(t *testing.T) {
 }
 
 func TestSet_OverwriteExisting(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
 	key := "test_key"
 
-	storage.Set(ctx, key, []byte("value1"), nil)
-	storage.Set(ctx, key, []byte("value2"), nil)
+	storage.Set(ctx, key, "value1", nil)
+	storage.Set(ctx, key, "value2", nil)
 
 	retrieved, _ := storage.Get(ctx, key)
-	if string(retrieved) != "value2" {
-		t.Fatalf("expected 'value2', got '%s'", string(retrieved))
-	}
+	assertString(t, retrieved, "value2")
 }
 
 func TestConcurrentReads(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
 	key := "concurrent_key"
-	value := []byte("concurrent_value")
+	value := "concurrent_value"
 
 	storage.Set(ctx, key, value, nil)
 
@@ -319,9 +324,7 @@ func TestConcurrentReads(t *testing.T) {
 			if err != nil {
 				t.Errorf("expected no error in concurrent read, got %v", err)
 			}
-			if string(retrieved) != "concurrent_value" {
-				t.Errorf("expected 'concurrent_value', got '%s'", string(retrieved))
-			}
+			assertString(t, retrieved, "concurrent_value")
 		}()
 	}
 
@@ -329,7 +332,7 @@ func TestConcurrentReads(t *testing.T) {
 }
 
 func TestConcurrentWritesAndReads(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -342,7 +345,7 @@ func TestConcurrentWritesAndReads(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			key := "key_" + string(rune(i))
-			value := []byte("value_" + string(rune(i)))
+			value := "value_" + string(rune(i))
 			storage.Set(ctx, key, value, nil)
 		}()
 	}
@@ -361,7 +364,7 @@ func TestConcurrentWritesAndReads(t *testing.T) {
 }
 
 func TestConcurrentDeletes(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -401,10 +404,10 @@ func TestCleanupExpiredEntries(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		// Create storage with custom initialization for fast cleanup
 		storage := &MemorySecondaryStorage{
-			store:               make(map[string]*storageEntry),
-			cleanupTickDuration: 5 * time.Millisecond, // Very fast cleanup for testing
-			stopCleanup:         make(chan struct{}),
-			done:                make(chan struct{}),
+			store:           make(map[string]*storageEntry),
+			cleanupInterval: 5 * time.Millisecond, // Very fast cleanup for testing
+			stopCleanup:     make(chan struct{}),
+			done:            make(chan struct{}),
 		}
 		// Start the cleanup goroutine with the custom interval
 		go storage.cleanupExpiredEntries()
@@ -416,7 +419,7 @@ func TestCleanupExpiredEntries(t *testing.T) {
 		ttl := 2 * time.Millisecond
 		for i := range 10 {
 			key := "cleanup_key_" + string(rune(i))
-			value := []byte("cleanup_value_" + string(rune(i)))
+			value := "cleanup_value_" + string(rune(i))
 			storage.Set(ctx, key, value, &ttl)
 		}
 
@@ -444,7 +447,7 @@ func TestCleanupExpiredEntries(t *testing.T) {
 }
 
 func TestClose_StopsCleanup(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 
 	// Verify cleanup goroutine is running
 	select {
@@ -468,7 +471,7 @@ func TestClose_StopsCleanup(t *testing.T) {
 }
 
 func TestMultipleKeys(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -477,7 +480,7 @@ func TestMultipleKeys(t *testing.T) {
 	values := []string{"value1", "value2", "value3"}
 
 	for i := range keys {
-		storage.Set(ctx, keys[i], []byte(values[i]), nil)
+		storage.Set(ctx, keys[i], values[i], nil)
 	}
 
 	for i := range keys {
@@ -485,15 +488,13 @@ func TestMultipleKeys(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expected no error for key %s, got %v", keys[i], err)
 		}
-		if string(retrieved) != values[i] {
-			t.Fatalf("expected '%s' for key %s, got '%s'", values[i], keys[i], string(retrieved))
-		}
+		assertString(t, retrieved, values[i])
 	}
 }
 
 func TestContextDeadline(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		storage := NewMemorySecondaryStorage()
+		storage := newTestMemorySecondaryStorage()
 		defer storage.Close()
 
 		// Create a context with a timeout using fake time
@@ -519,7 +520,7 @@ func TestContextDeadline(t *testing.T) {
 		}
 
 		// Try to set with expired context
-		err := storage.Set(ctx, "key", []byte("value"), nil)
+		err := storage.Set(ctx, "key", "value", nil)
 		if err == nil {
 			t.Fatal("expected context deadline exceeded error, got nil")
 		}
@@ -531,7 +532,7 @@ func TestContextDeadline(t *testing.T) {
 }
 
 func TestRaceConditions(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := newTestMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -549,7 +550,7 @@ func TestRaceConditions(t *testing.T) {
 			// Interleave operations
 			switch i % 3 {
 			case 0:
-				storage.Set(ctx, key, []byte("value"), nil)
+				storage.Set(ctx, key, "value", nil)
 				atomic.AddInt64(&counter, 1)
 			case 1:
 				storage.Get(ctx, key)

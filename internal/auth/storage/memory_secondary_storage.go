@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/GoBetterAuth/go-better-auth/pkg/domain"
 )
 
 // storageEntry represents a single entry in the memory storage with expiration support.
 type storageEntry struct {
-	value     []byte
+	value     string
 	expiresAt *time.Time
 }
 
@@ -17,20 +19,27 @@ type storageEntry struct {
 type MemorySecondaryStorage struct {
 	mu    sync.RWMutex
 	store map[string]*storageEntry
-	// cleanupTickDuration controls how often expired entries are cleaned up.
-	cleanupTickDuration time.Duration
+	// cleanupInterval controls how often expired entries are cleaned up.
+	cleanupInterval time.Duration
 	// stopCleanup is used to signal the cleanup goroutine to stop.
 	stopCleanup chan struct{}
 	// done signals that the cleanup goroutine has stopped.
 	done chan struct{}
 }
 
-func NewMemorySecondaryStorage() *MemorySecondaryStorage {
+func NewMemorySecondaryStorage(config *domain.SecondaryStorageMemoryConfig) *MemorySecondaryStorage {
+	cleanupInterval := 1 * time.Minute
+	if config != nil {
+		if config.CleanupInterval != 0 {
+			cleanupInterval = config.CleanupInterval
+		}
+	}
+
 	storage := &MemorySecondaryStorage{
-		store:               make(map[string]*storageEntry),
-		cleanupTickDuration: 1 * time.Minute,
-		stopCleanup:         make(chan struct{}),
-		done:                make(chan struct{}),
+		store:           make(map[string]*storageEntry),
+		cleanupInterval: cleanupInterval,
+		stopCleanup:     make(chan struct{}),
+		done:            make(chan struct{}),
 	}
 
 	go storage.cleanupExpiredEntries()
@@ -40,7 +49,7 @@ func NewMemorySecondaryStorage() *MemorySecondaryStorage {
 
 // Get retrieves a value from memory by key.
 // Returns an error if the key does not exist or has expired.
-func (storage *MemorySecondaryStorage) Get(ctx context.Context, key string) ([]byte, error) {
+func (storage *MemorySecondaryStorage) Get(ctx context.Context, key string) (any, error) {
 	// Check context cancellation early.
 	select {
 	case <-ctx.Done():
@@ -60,15 +69,11 @@ func (storage *MemorySecondaryStorage) Get(ctx context.Context, key string) ([]b
 		return nil, fmt.Errorf("key expired: %s", key)
 	}
 
-	// Return a copy of the value to prevent external mutations.
-	value := make([]byte, len(entry.value))
-	copy(value, entry.value)
-
-	return value, nil
+	return entry.value, nil
 }
 
 // Set stores a value in memory with an optional TTL.
-// If ttl is nil, the entry will not expire.
+// The value must be a string. If ttl is nil, the entry will not expire.
 func (storage *MemorySecondaryStorage) Set(ctx context.Context, key string, value any, ttl *time.Duration) error {
 	// Check context cancellation early.
 	select {
@@ -77,24 +82,18 @@ func (storage *MemorySecondaryStorage) Set(ctx context.Context, key string, valu
 	default:
 	}
 
-	// Type assert to []byte.
-	valueBytes, ok := value.([]byte)
+	valueStr, ok := value.(string)
 	if !ok {
-		return fmt.Errorf("value must be of type []byte, got %T", value)
+		return fmt.Errorf("value must be of type string, got %T", value)
 	}
 
 	storage.mu.Lock()
 	defer storage.mu.Unlock()
 
-	// Create a copy of the value to prevent external mutations.
-	valueCopy := make([]byte, len(valueBytes))
-	copy(valueCopy, valueBytes)
-
 	entry := &storageEntry{
-		value: valueCopy,
+		value: valueStr,
 	}
 
-	// Set expiration time if TTL is provided.
 	if ttl != nil {
 		expiresAt := time.Now().Add(*ttl)
 		entry.expiresAt = &expiresAt
@@ -130,7 +129,7 @@ func (storage *MemorySecondaryStorage) Delete(ctx context.Context, key string) e
 // cleanupExpiredEntries runs periodically to remove expired entries from storage.
 // This prevents memory leaks from entries with TTL that are never accessed.
 func (storage *MemorySecondaryStorage) cleanupExpiredEntries() {
-	ticker := time.NewTicker(storage.cleanupTickDuration)
+	ticker := time.NewTicker(storage.cleanupInterval)
 	defer ticker.Stop()
 	defer close(storage.done)
 

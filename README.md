@@ -34,6 +34,7 @@
 - 🔑 **Email & Password** – Secure, production-ready authentication with argon2 password hashing. Includes Email Verification, Password Reset and Change Email flows.
 - 🌐 **Social OAuth Providers** – Google, GitHub, Discord and more coming soon.
 - 💾 **Multiple Database Support** – SQLite, PostgreSQL, MySQL adapters and more coming soon, with migration scripts included.
+- 🗄️ **Secondary Storage** – Supports in-memory/database storage and a custom interface to implement Redis and other key-value stores. Use secondary storage to manage session data, rate limiting counters, and other high-frequency records. This enables offloading intensive data to high-performance storage solutions or RAM for optimal scalability and speed.
 - 📦 **Minimal Dependencies** – Standard library first, production-ready, and framework-agnostic.
 - 🧩 **Comprehensive Configuration** – Flexible, type-safe config with sensible defaults and environment variable support.
 - 🛡️ **Enhanced Security** – CSRF protection.

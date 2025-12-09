@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"os"
 	"time"
-
-	"github.com/GoBetterAuth/go-better-auth/internal/auth/storage"
 )
 
 // =======================
@@ -25,7 +23,7 @@ type DatabaseConfig struct {
 // =======================
 
 type SecondaryStorageConfig struct {
-	Storage storage.SecondaryStorage
+	Storage SecondaryStorage
 }
 
 // =======================
@@ -264,9 +262,6 @@ func NewConfig(opts ...ConfigOption) *Config {
 			MaxOpenConns:    25,
 			MaxIdleConns:    5,
 			ConnMaxLifetime: time.Hour,
-		},
-		SecondaryStorage: SecondaryStorageConfig{
-			Storage: storage.NewMemorySecondaryStorage(),
 		},
 		EmailPassword: EmailPasswordConfig{
 			Enabled:                  false,

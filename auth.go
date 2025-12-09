@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/GoBetterAuth/go-better-auth/internal/auth"
+	"github.com/GoBetterAuth/go-better-auth/internal/auth/storage"
 	"github.com/GoBetterAuth/go-better-auth/internal/handlers"
 	"github.com/GoBetterAuth/go-better-auth/internal/middleware"
 	"github.com/GoBetterAuth/go-better-auth/internal/util"
@@ -58,6 +59,10 @@ func New(config *domain.Config, db *gorm.DB) *Auth {
 		dbToUse = db
 	}
 
+	if config.SecondaryStorage.Storage == nil {
+		config.SecondaryStorage.Storage = storage.NewMemorySecondaryStorage(nil)
+	}
+
 	return &Auth{
 		Config: config,
 		DB:     dbToUse,
@@ -65,8 +70,14 @@ func New(config *domain.Config, db *gorm.DB) *Auth {
 }
 
 func (auth *Auth) RunMigrations() {
-	// Auto migrate domain models
-	if err := auth.DB.AutoMigrate(&domain.User{}, &domain.Account{}, &domain.Session{}, &domain.Verification{}); err != nil {
+	models := []any{
+		&domain.User{},
+		&domain.Account{},
+		&domain.Session{},
+		&domain.Verification{},
+		&domain.KeyValueStore{},
+	}
+	if err := auth.DB.AutoMigrate(models...); err != nil {
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 		logger.Error("failed to auto migrate database", slog.Any("error", err))
 		panic(err)
@@ -76,10 +87,11 @@ func (auth *Auth) RunMigrations() {
 func (auth *Auth) DropMigrations() {
 	// Drop domain tables
 	models := []any{
-		&domain.User{},
-		&domain.Account{},
-		&domain.Session{},
+		&domain.KeyValueStore{},
 		&domain.Verification{},
+		&domain.Session{},
+		&domain.Account{},
+		&domain.User{},
 	}
 	for _, model := range models {
 		if err := auth.DB.Migrator().DropTable(model); err != nil {
