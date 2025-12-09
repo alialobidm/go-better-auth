@@ -13,8 +13,8 @@ type storageEntry struct {
 	expiresAt *time.Time
 }
 
-// MemoryStorage is an in-memory implementation of SecondaryStorage.
-type MemoryStorage struct {
+// MemorySecondaryStorage is an in-memory implementation of SecondaryStorage.
+type MemorySecondaryStorage struct {
 	mu    sync.RWMutex
 	store map[string]*storageEntry
 	// cleanupTickDuration controls how often expired entries are cleaned up.
@@ -25,8 +25,8 @@ type MemoryStorage struct {
 	done chan struct{}
 }
 
-func NewMemoryStorage() *MemoryStorage {
-	storage := &MemoryStorage{
+func NewMemorySecondaryStorage() *MemorySecondaryStorage {
+	storage := &MemorySecondaryStorage{
 		store:               make(map[string]*storageEntry),
 		cleanupTickDuration: 1 * time.Minute,
 		stopCleanup:         make(chan struct{}),
@@ -40,7 +40,7 @@ func NewMemoryStorage() *MemoryStorage {
 
 // Get retrieves a value from memory by key.
 // Returns an error if the key does not exist or has expired.
-func (storage *MemoryStorage) Get(ctx context.Context, key string) ([]byte, error) {
+func (storage *MemorySecondaryStorage) Get(ctx context.Context, key string) ([]byte, error) {
 	// Check context cancellation early.
 	select {
 	case <-ctx.Done():
@@ -69,7 +69,7 @@ func (storage *MemoryStorage) Get(ctx context.Context, key string) ([]byte, erro
 
 // Set stores a value in memory with an optional TTL.
 // If ttl is nil, the entry will not expire.
-func (storage *MemoryStorage) Set(ctx context.Context, key string, value any, ttl *time.Duration) error {
+func (storage *MemorySecondaryStorage) Set(ctx context.Context, key string, value any, ttl *time.Duration) error {
 	// Check context cancellation early.
 	select {
 	case <-ctx.Done():
@@ -107,7 +107,7 @@ func (storage *MemoryStorage) Set(ctx context.Context, key string, value any, tt
 
 // Delete removes a key from storage.
 // Returns an error if the key does not exist.
-func (storage *MemoryStorage) Delete(ctx context.Context, key string) error {
+func (storage *MemorySecondaryStorage) Delete(ctx context.Context, key string) error {
 	// Check context cancellation early.
 	select {
 	case <-ctx.Done():
@@ -129,7 +129,7 @@ func (storage *MemoryStorage) Delete(ctx context.Context, key string) error {
 
 // cleanupExpiredEntries runs periodically to remove expired entries from storage.
 // This prevents memory leaks from entries with TTL that are never accessed.
-func (storage *MemoryStorage) cleanupExpiredEntries() {
+func (storage *MemorySecondaryStorage) cleanupExpiredEntries() {
 	ticker := time.NewTicker(storage.cleanupTickDuration)
 	defer ticker.Stop()
 	defer close(storage.done)
@@ -145,7 +145,7 @@ func (storage *MemoryStorage) cleanupExpiredEntries() {
 }
 
 // removeExpiredEntries removes all expired entries from storage.
-func (storage *MemoryStorage) removeExpiredEntries() {
+func (storage *MemorySecondaryStorage) removeExpiredEntries() {
 	storage.mu.Lock()
 	defer storage.mu.Unlock()
 
@@ -158,7 +158,7 @@ func (storage *MemoryStorage) removeExpiredEntries() {
 }
 
 // Close gracefully shuts down the storage by stopping the cleanup goroutine.
-func (storage *MemoryStorage) Close() error {
+func (storage *MemorySecondaryStorage) Close() error {
 	close(storage.stopCleanup)
 	<-storage.done
 	return nil

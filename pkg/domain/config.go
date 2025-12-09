@@ -266,7 +266,7 @@ func NewConfig(opts ...ConfigOption) *Config {
 			ConnMaxLifetime: time.Hour,
 		},
 		SecondaryStorage: SecondaryStorageConfig{
-			Storage: storage.NewMemoryStorage(),
+			Storage: storage.NewMemorySecondaryStorage(),
 		},
 		EmailPassword: EmailPasswordConfig{
 			Enabled:                  false,

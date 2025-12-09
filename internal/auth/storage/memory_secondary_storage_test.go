@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewMemoryStorage(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	if storage == nil {
@@ -28,7 +28,7 @@ func TestNewMemoryStorage(t *testing.T) {
 }
 
 func TestSet_Success(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -51,7 +51,7 @@ func TestSet_Success(t *testing.T) {
 }
 
 func TestSet_InvalidType(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -63,7 +63,7 @@ func TestSet_InvalidType(t *testing.T) {
 }
 
 func TestSet_ContextCancelled(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -80,7 +80,7 @@ func TestSet_ContextCancelled(t *testing.T) {
 }
 
 func TestGet_Success(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -100,7 +100,7 @@ func TestGet_Success(t *testing.T) {
 }
 
 func TestGet_KeyNotFound(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -112,7 +112,7 @@ func TestGet_KeyNotFound(t *testing.T) {
 }
 
 func TestGet_ContextCancelled(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -130,7 +130,7 @@ func TestGet_ContextCancelled(t *testing.T) {
 
 func TestGet_ExpiredEntry(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		storage := NewMemoryStorage()
+		storage := NewMemorySecondaryStorage()
 		defer storage.Close()
 
 		ctx := context.Background()
@@ -161,7 +161,7 @@ func TestGet_ExpiredEntry(t *testing.T) {
 }
 
 func TestDelete_Success(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -182,7 +182,7 @@ func TestDelete_Success(t *testing.T) {
 }
 
 func TestDelete_KeyNotFound(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -194,7 +194,7 @@ func TestDelete_KeyNotFound(t *testing.T) {
 }
 
 func TestDelete_ContextCancelled(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -211,7 +211,7 @@ func TestDelete_ContextCancelled(t *testing.T) {
 }
 
 func TestValueMutation_Prevented(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -237,7 +237,7 @@ func TestValueMutation_Prevented(t *testing.T) {
 
 func TestSet_WithTTL(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		storage := NewMemoryStorage()
+		storage := NewMemorySecondaryStorage()
 		defer storage.Close()
 
 		ctx := context.Background()
@@ -283,7 +283,7 @@ func TestSet_WithTTL(t *testing.T) {
 }
 
 func TestSet_OverwriteExisting(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -299,7 +299,7 @@ func TestSet_OverwriteExisting(t *testing.T) {
 }
 
 func TestConcurrentReads(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -329,7 +329,7 @@ func TestConcurrentReads(t *testing.T) {
 }
 
 func TestConcurrentWritesAndReads(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -361,7 +361,7 @@ func TestConcurrentWritesAndReads(t *testing.T) {
 }
 
 func TestConcurrentDeletes(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -400,7 +400,7 @@ func TestConcurrentDeletes(t *testing.T) {
 func TestCleanupExpiredEntries(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		// Create storage with custom initialization for fast cleanup
-		storage := &MemoryStorage{
+		storage := &MemorySecondaryStorage{
 			store:               make(map[string]*storageEntry),
 			cleanupTickDuration: 5 * time.Millisecond, // Very fast cleanup for testing
 			stopCleanup:         make(chan struct{}),
@@ -444,7 +444,7 @@ func TestCleanupExpiredEntries(t *testing.T) {
 }
 
 func TestClose_StopsCleanup(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 
 	// Verify cleanup goroutine is running
 	select {
@@ -468,7 +468,7 @@ func TestClose_StopsCleanup(t *testing.T) {
 }
 
 func TestMultipleKeys(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
@@ -493,7 +493,7 @@ func TestMultipleKeys(t *testing.T) {
 
 func TestContextDeadline(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		storage := NewMemoryStorage()
+		storage := NewMemorySecondaryStorage()
 		defer storage.Close()
 
 		// Create a context with a timeout using fake time
@@ -531,7 +531,7 @@ func TestContextDeadline(t *testing.T) {
 }
 
 func TestRaceConditions(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemorySecondaryStorage()
 	defer storage.Close()
 
 	ctx := context.Background()
