@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -50,7 +51,6 @@ func NewMemorySecondaryStorage(config *domain.SecondaryStorageMemoryConfig) *Mem
 // Get retrieves a value from memory by key.
 // Returns an error if the key does not exist or has expired.
 func (storage *MemorySecondaryStorage) Get(ctx context.Context, key string) (any, error) {
-	// Check context cancellation early.
 	select {
 	case <-ctx.Done():
 		return nil, fmt.Errorf("context cancelled: %w", ctx.Err())
@@ -75,7 +75,6 @@ func (storage *MemorySecondaryStorage) Get(ctx context.Context, key string) (any
 // Set stores a value in memory with an optional TTL.
 // The value must be a string. If ttl is nil, the entry will not expire.
 func (storage *MemorySecondaryStorage) Set(ctx context.Context, key string, value any, ttl *time.Duration) error {
-	// Check context cancellation early.
 	select {
 	case <-ctx.Done():
 		return fmt.Errorf("context cancelled: %w", ctx.Err())
@@ -107,7 +106,6 @@ func (storage *MemorySecondaryStorage) Set(ctx context.Context, key string, valu
 // Delete removes a key from storage.
 // Returns an error if the key does not exist.
 func (storage *MemorySecondaryStorage) Delete(ctx context.Context, key string) error {
-	// Check context cancellation early.
 	select {
 	case <-ctx.Done():
 		return fmt.Errorf("context cancelled: %w", ctx.Err())
@@ -124,6 +122,49 @@ func (storage *MemorySecondaryStorage) Delete(ctx context.Context, key string) e
 	delete(storage.store, key)
 
 	return nil
+}
+
+// Incr increments the integer value stored at key by 1.
+// If the key does not exist, it is initialized to 0 and then incremented to 1.
+// If ttl is provided, it will be set or updated on the key.
+func (storage *MemorySecondaryStorage) Incr(ctx context.Context, key string, ttl *time.Duration) (int, error) {
+	select {
+	case <-ctx.Done():
+		return 0, fmt.Errorf("context cancelled: %w", ctx.Err())
+	default:
+	}
+
+	storage.mu.Lock()
+	defer storage.mu.Unlock()
+
+	var count int
+
+	if entry, exists := storage.store[key]; exists {
+		if entry.expiresAt != nil && time.Now().After(*entry.expiresAt) {
+			count = 0
+		} else {
+			if num, err := strconv.Atoi(entry.value); err == nil {
+				count = num
+			} else {
+				return 0, fmt.Errorf("value at key %s is not a valid integer: %w", key, err)
+			}
+		}
+	}
+
+	count++
+
+	entry := &storageEntry{
+		value: strconv.Itoa(count),
+	}
+
+	if ttl != nil {
+		expiresAt := time.Now().Add(*ttl)
+		entry.expiresAt = &expiresAt
+	}
+
+	storage.store[key] = entry
+
+	return count, nil
 }
 
 // cleanupExpiredEntries runs periodically to remove expired entries from storage.
