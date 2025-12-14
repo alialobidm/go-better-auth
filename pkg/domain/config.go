@@ -1,9 +1,16 @@
 package domain
 
 import (
+	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
+
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 // =======================
@@ -248,6 +255,7 @@ type Config struct {
 	BaseURL           string
 	BasePath          string
 	Secret            string
+	DB                *gorm.DB
 	Database          DatabaseConfig
 	SecondaryStorage  SecondaryStorageConfig
 	EmailPassword     EmailPasswordConfig
@@ -288,11 +296,12 @@ func NewConfig(opts ...ConfigOption) *Config {
 	}
 
 	// Define sensible defaults first
-	c := &Config{
+	config := &Config{
 		AppName:  "GoBetterAuth",
 		BaseURL:  baseURL,
 		BasePath: "/auth",
 		Secret:   secret,
+		DB:       nil,
 		Database: DatabaseConfig{
 			MaxOpenConns:    25,
 			MaxIdleConns:    5,
@@ -347,10 +356,56 @@ func NewConfig(opts ...ConfigOption) *Config {
 
 	// Apply the options
 	for _, opt := range opts {
-		opt(c)
+		opt(config)
 	}
 
-	return c
+	// initialize DB using the configured DatabaseConfig if not already set
+	if config.DB == nil && config.Database.Provider != "" && config.Database.ConnectionString != "" {
+		var err error
+		config.DB, err = initDatabase(config.Database)
+		if err != nil {
+			logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
+			logger.Error(
+				"failed to open database",
+				slog.String("provider", config.Database.Provider),
+				slog.String("connection_string", config.Database.ConnectionString),
+				slog.Any("error", err),
+			)
+			panic(err)
+		}
+	}
+
+	// Apply database connection pool settings to the GORM DB if it's set
+	if config.DB != nil {
+		sqlDB, err := config.DB.DB()
+		if err != nil {
+			logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
+			logger.Error(
+				"failed to get underlying sql.DB",
+				slog.Any("error", err),
+			)
+			panic(err)
+		}
+		sqlDB.SetMaxOpenConns(config.Database.MaxOpenConns)
+		sqlDB.SetMaxIdleConns(config.Database.MaxIdleConns)
+		sqlDB.SetConnMaxLifetime(config.Database.ConnMaxLifetime)
+	}
+
+	return config
+}
+
+// initDatabase creates a GORM DB connection based on provider.
+func initDatabase(dbConfig DatabaseConfig) (*gorm.DB, error) {
+	switch dbConfig.Provider {
+	case "sqlite":
+		return gorm.Open(sqlite.Open(dbConfig.ConnectionString), &gorm.Config{})
+	case "postgres":
+		return gorm.Open(postgres.Open(dbConfig.ConnectionString), &gorm.Config{})
+	case "mysql":
+		return gorm.Open(mysql.Open(dbConfig.ConnectionString), &gorm.Config{})
+	default:
+		return nil, fmt.Errorf("unsupported database provider: %s", dbConfig.Provider)
+	}
 }
 
 // =======================
@@ -378,6 +433,12 @@ func WithBasePath(path string) ConfigOption {
 func WithSecret(secret string) ConfigOption {
 	return func(c *Config) {
 		c.Secret = secret
+	}
+}
+
+func WithDB(db *gorm.DB) ConfigOption {
+	return func(c *Config) {
+		c.DB = db
 	}
 }
 
