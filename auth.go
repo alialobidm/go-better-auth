@@ -19,10 +19,20 @@ import (
 // INITIALISATION
 // ---------------------------------
 
+type Api struct {
+	Users         *auth.UserService
+	Accounts      *auth.AccountService
+	Sessions      *auth.SessionService
+	Verifications *auth.VerificationService
+	Tokens        *auth.TokenService
+	// TODO: KeyValueStore *auth.KeyValueStoreService
+}
+
 type Auth struct {
 	Config       *domain.Config
-	mux          *http.ServeMux
 	authService  *auth.Service
+	Api          Api
+	mux          *http.ServeMux
 	customRoutes []domain.CustomRoute
 }
 
@@ -31,9 +41,20 @@ func New(config *domain.Config) *Auth {
 	initStorage(config)
 	mux := http.NewServeMux()
 
+	authService := constructAuthService(config)
+
+	api := Api{
+		Users:         authService.UserService,
+		Accounts:      authService.AccountService,
+		Sessions:      authService.SessionService,
+		Verifications: authService.VerificationService,
+		Tokens:        authService.TokenService,
+	}
+
 	auth := &Auth{
 		Config:       config,
-		authService:  constructAuthService(config),
+		authService:  authService,
+		Api:          api,
 		mux:          mux,
 		customRoutes: []domain.CustomRoute{},
 	}
