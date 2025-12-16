@@ -69,7 +69,7 @@ func TestWatermillEventBus_Subscribe(t *testing.T) {
 		var receivedEvent models.Event
 
 		wg.Add(1)
-		err := bus.Subscribe(context.Background(), models.EventUserSignedUp, func(ctx context.Context, event models.Event) error {
+		_, err := bus.Subscribe(models.EventUserSignedUp, func(ctx context.Context, event models.Event) error {
 			handlerCalled.Store(true)
 			receivedEvent = event
 			wg.Done()
@@ -107,14 +107,14 @@ func TestWatermillEventBus_MultipleEvents(t *testing.T) {
 
 		wg.Add(2)
 
-		err := bus.Subscribe(context.Background(), models.EventUserSignedUp, func(ctx context.Context, event models.Event) error {
+		_, err := bus.Subscribe(models.EventUserSignedUp, func(ctx context.Context, event models.Event) error {
 			signupCount.Add(1)
 			wg.Done()
 			return nil
 		})
 		assert.NoError(t, err)
 
-		err = bus.Subscribe(context.Background(), models.EventUserLoggedIn, func(ctx context.Context, event models.Event) error {
+		_, err = bus.Subscribe(models.EventUserLoggedIn, func(ctx context.Context, event models.Event) error {
 			loginCount.Add(1)
 			wg.Done()
 			return nil
@@ -154,7 +154,7 @@ func TestWatermillEventBus_EventData(t *testing.T) {
 		var receivedPayload json.RawMessage
 
 		wg.Add(1)
-		err := bus.Subscribe(context.Background(), models.EventUserLoggedIn, func(ctx context.Context, event models.Event) error {
+		_, err := bus.Subscribe(models.EventUserLoggedIn, func(ctx context.Context, event models.Event) error {
 			receivedPayload = event.Payload
 			wg.Done()
 			return nil
@@ -198,7 +198,7 @@ func TestEventBus_WithCustomPubSub(t *testing.T) {
 		var receivedEvent models.Event
 
 		wg.Add(1)
-		err := bus.Subscribe(context.Background(), models.EventUserSignedUp, func(ctx context.Context, event models.Event) error {
+		_, err := bus.Subscribe(models.EventUserSignedUp, func(ctx context.Context, event models.Event) error {
 			receivedEvent = event
 			wg.Done()
 			return nil
@@ -232,5 +232,96 @@ func TestEventBus_WithCustomPubSub(t *testing.T) {
 		var data map[string]string
 		json.Unmarshal(receivedEvent.Payload, &data)
 		assert.Equal(t, "custom-transport-test", data["user_id"])
+	})
+}
+
+func TestEventBus_MultipleHandlersPerTopic(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		// This test verifies that multiple handlers subscribed to the same event type
+		// all receive the event without creating multiple consumer goroutines
+		bus := NewEventBus(getMockConfig(), nil)
+		defer bus.Close()
+
+		const numHandlers = 10
+		counts := make([]atomic.Int32, numHandlers)
+		var wg sync.WaitGroup
+		wg.Add(numHandlers)
+
+		// Subscribe multiple handlers to the same event type
+		for i := range numHandlers {
+			handlerIndex := i
+			_, err := bus.Subscribe(models.EventUserSignedUp, func(ctx context.Context, event models.Event) error {
+				counts[handlerIndex].Add(1)
+				wg.Done()
+				return nil
+			})
+			assert.NoError(t, err)
+		}
+
+		payload, _ := json.Marshal(map[string]string{"user_id": "multi-handler-test"})
+		event := models.Event{
+			Type:      models.EventUserSignedUp,
+			Timestamp: time.Now().UTC(),
+			Payload:   payload,
+			Metadata:  map[string]string{"source": "test"},
+		}
+
+		// Publish one event
+		err := bus.Publish(context.Background(), event)
+		assert.NoError(t, err)
+
+		// All handlers should receive the same event
+		wg.Wait()
+		for i := range numHandlers {
+			assert.Equal(t, int32(1), counts[i].Load(), "handler %d should have received exactly 1 event", i)
+		}
+	})
+}
+
+func TestEventBus_Unsubscribe(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		bus := NewEventBus(getMockConfig(), nil)
+		defer bus.Close()
+
+		var wg sync.WaitGroup
+		count := atomic.Int32{}
+
+		wg.Add(1)
+		// Subscribe first handler
+		id1, err := bus.Subscribe(models.EventUserSignedUp, func(ctx context.Context, event models.Event) error {
+			count.Add(1)
+			return nil
+		})
+		assert.NoError(t, err)
+
+		// Subscribe second handler
+		id2, err := bus.Subscribe(models.EventUserSignedUp, func(ctx context.Context, event models.Event) error {
+			count.Add(1)
+			wg.Done()
+			return nil
+		})
+		assert.NoError(t, err)
+
+		// Unsubscribe the first handler
+		bus.Unsubscribe(models.EventUserSignedUp, id1)
+
+		payload, _ := json.Marshal(map[string]string{"user_id": "unsubscribe-test"})
+		event := models.Event{
+			Type:      models.EventUserSignedUp,
+			Timestamp: time.Now().UTC(),
+			Payload:   payload,
+			Metadata:  map[string]string{"source": "test"},
+		}
+
+		// Publish event
+		err = bus.Publish(context.Background(), event)
+		assert.NoError(t, err)
+
+		wg.Wait()
+		// Only the second handler should have received the event
+		assert.Equal(t, int32(1), count.Load())
+
+		// Clean up: unsubscribe second handler
+		bus.Unsubscribe(models.EventUserSignedUp, id2)
 	})
 }

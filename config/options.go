@@ -89,7 +89,10 @@ func NewConfig(options ...models.ConfigOption) *models.Config {
 		EndpointHooks: models.EndpointHooksConfig{},
 		DatabaseHooks: models.DatabaseHooksConfig{},
 		EventHooks:    models.EventHooksConfig{},
-		EventBus:      models.EventBusConfig{},
+		EventBus: models.EventBusConfig{
+			Enabled:               false,
+			MaxConcurrentHandlers: 64,
+		},
 	}
 
 	// Apply the options
@@ -360,7 +363,16 @@ func WithEventHooks(eventHooksConfig models.EventHooksConfig) models.ConfigOptio
 
 func WithEventBus(eventBusConfig models.EventBusConfig) models.ConfigOption {
 	return func(c *models.Config) {
-		c.EventBus = eventBusConfig
+		defaults := c.EventBus
+
+		if eventBusConfig.Enabled {
+			defaults.Enabled = eventBusConfig.Enabled
+		}
+		if eventBusConfig.MaxConcurrentHandlers != 0 {
+			defaults.MaxConcurrentHandlers = eventBusConfig.MaxConcurrentHandlers
+		}
+
+		c.EventBus = defaults
 	}
 }
 

@@ -40,9 +40,13 @@ type EventPublisher interface {
 // EventHandler processes events
 type EventHandler func(ctx context.Context, event Event) error
 
+// SubscriptionID identifies a specific event handler subscription for removal
+type SubscriptionID uint64
+
 // EventSubscriber defines the interface for subscribing to events
 type EventSubscriber interface {
-	Subscribe(ctx context.Context, eventType string, handler EventHandler) error
+	Subscribe(eventType string, handler EventHandler) (SubscriptionID, error)
+	Unsubscribe(eventType string, id SubscriptionID)
 	Close() error
 }
 

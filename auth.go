@@ -27,6 +27,7 @@ type Auth struct {
 	service        *auth.Service
 	Api            *models.Api
 	customRoutes   []models.CustomRoute
+	EventBus       models.EventBus
 	pluginRegistry *plugins.PluginRegistry
 }
 
@@ -44,6 +45,7 @@ func New(config *models.Config) *Auth {
 		Config:       config,
 		mux:          mux,
 		customRoutes: []models.CustomRoute{},
+		EventBus:     eventBus,
 	}
 
 	pluginMiddleware := &models.PluginMiddleware{

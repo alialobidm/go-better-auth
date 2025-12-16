@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,10 +15,33 @@ import (
 	"github.com/GoBetterAuth/go-better-auth/models"
 )
 
+type handlerEntry struct {
+	id      models.SubscriptionID
+	handler models.EventHandler
+}
+
+type topicState struct {
+	handlers []handlerEntry
+	cancel   context.CancelFunc
+}
+
 type eventBus struct {
 	config *models.Config
 	pubsub models.PubSub
 	logger *slog.Logger
+
+	mu     sync.RWMutex
+	topics map[string]*topicState
+
+	subIDCounter atomic.Uint64
+
+	// concurrency control
+	handlerSem chan struct{}
+
+	// lifecycle
+	rootCtx context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 func NewEventBus(config *models.Config, ps models.PubSub) models.EventBus {
@@ -28,24 +53,32 @@ func NewEventBus(config *models.Config, ps models.PubSub) models.EventBus {
 		ps = NewInMemoryPubSub()
 	}
 
+	rootCtx, cancel := context.WithCancel(context.Background())
+
+	maxHandlers := config.EventBus.MaxConcurrentHandlers
+
 	return &eventBus{
-		config: config,
-		pubsub: ps,
-		logger: slog.Default(),
+		config:     config,
+		pubsub:     ps,
+		logger:     slog.Default(),
+		topics:     make(map[string]*topicState),
+		handlerSem: make(chan struct{}, maxHandlers),
+		rootCtx:    rootCtx,
+		cancel:     cancel,
 	}
 }
 
-func (b *eventBus) topic(eventType string) string {
-	prefix := strings.TrimSuffix(b.config.EventBus.Prefix, ".")
+func (bus *eventBus) topic(eventType string) string {
+	prefix := strings.TrimSuffix(bus.config.EventBus.Prefix, ".")
 	if prefix == "" {
 		return eventType
 	}
 	return prefix + "." + eventType
 }
 
-func (b *eventBus) Publish(ctx context.Context, evt models.Event) error {
-	// Copy to avoid mutating caller-owned data
+func (bus *eventBus) Publish(ctx context.Context, evt models.Event) error {
 	event := evt
+
 	if event.Type == "" {
 		return fmt.Errorf("eventbus: event type must not be empty")
 	}
@@ -73,34 +106,85 @@ func (b *eventBus) Publish(ctx context.Context, evt models.Event) error {
 		},
 	}
 
-	return b.pubsub.Publish(ctx, b.topic(event.Type), msg)
+	return bus.pubsub.Publish(ctx, bus.topic(event.Type), msg)
 }
 
-func (b *eventBus) Subscribe(
-	ctx context.Context,
+func (bus *eventBus) Subscribe(
 	eventType string,
 	handler models.EventHandler,
-) error {
+) (models.SubscriptionID, error) {
 	if handler == nil {
-		return fmt.Errorf("eventbus: event handler must not be nil")
+		return 0, fmt.Errorf("eventbus: handler must not be nil")
 	}
 
-	msgs, err := b.pubsub.Subscribe(ctx, b.topic(eventType))
-	if err != nil {
-		return err
+	topic := bus.topic(eventType)
+	id := models.SubscriptionID(bus.subIDCounter.Add(1))
+
+	bus.mu.Lock()
+	defer bus.mu.Unlock()
+
+	state, exists := bus.topics[topic]
+
+	// First subscriber → start consumer
+	if !exists {
+		ctx, cancel := context.WithCancel(bus.rootCtx)
+
+		msgs, err := bus.pubsub.Subscribe(ctx, topic)
+		if err != nil {
+			cancel()
+			return 0, err
+		}
+
+		state = &topicState{
+			cancel: cancel,
+		}
+		bus.topics[topic] = state
+
+		bus.wg.Add(1)
+		go bus.consumeAndMultiplex(ctx, topic, msgs)
 	}
 
-	go b.consume(ctx, eventType, msgs, handler)
+	state.handlers = append(state.handlers, handlerEntry{
+		id:      id,
+		handler: handler,
+	})
 
-	return nil
+	return id, nil
 }
 
-func (b *eventBus) consume(
+func (bus *eventBus) Unsubscribe(eventType string, id models.SubscriptionID) {
+	topic := bus.topic(eventType)
+
+	bus.mu.Lock()
+	defer bus.mu.Unlock()
+
+	state, ok := bus.topics[topic]
+	if !ok {
+		return
+	}
+
+	handlers := state.handlers
+	for i, entry := range handlers {
+		if entry.id == id {
+			state.handlers = append(handlers[:i], handlers[i+1:]...)
+			break
+		}
+	}
+
+	// No handlers left → stop consumer
+	if len(state.handlers) == 0 {
+		state.cancel()
+		delete(bus.topics, topic)
+	}
+}
+
+func (bus *eventBus) consumeAndMultiplex(
 	ctx context.Context,
-	eventType string,
+	topic string,
 	msgs <-chan *models.Message,
-	handler models.EventHandler,
 ) {
+	defer bus.wg.Done()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -113,40 +197,64 @@ func (b *eventBus) consume(
 
 			var event models.Event
 			if err := json.Unmarshal(msg.Payload, &event); err != nil {
-				b.logger.Error(
+				bus.logger.Error(
 					"failed to unmarshal event",
 					"error", err,
-					"topic", b.topic(eventType),
+					"topic", topic,
 					"message_id", msg.UUID,
 				)
 				continue
 			}
 
-			func() {
-				defer func() {
-					if r := recover(); r != nil {
-						b.logger.Error(
-							"event handler panicked",
-							"panic", r,
-							"event_type", event.Type,
-							"event_id", event.ID,
-						)
-					}
-				}()
+			bus.mu.RLock()
+			state := bus.topics[topic]
+			handlers := append([]handlerEntry(nil), state.handlers...)
+			bus.mu.RUnlock()
 
-				if err := handler(ctx, event); err != nil {
-					b.logger.Error(
-						"event handler error",
-						"error", err,
-						"event_type", event.Type,
-						"event_id", event.ID,
-					)
-				}
-			}()
+			for _, entry := range handlers {
+				bus.handlerSem <- struct{}{}
+				bus.wg.Add(1)
+
+				go bus.callHandler(ctx, entry.handler, event)
+			}
 		}
 	}
 }
 
-func (b *eventBus) Close() error {
-	return b.pubsub.Close()
+func (bus *eventBus) callHandler(
+	ctx context.Context,
+	handler models.EventHandler,
+	event models.Event,
+) {
+	defer func() {
+		if r := recover(); r != nil {
+			bus.logger.Error(
+				"event handler panicked",
+				"panic", r,
+				"event_type", event.Type,
+				"event_id", event.ID,
+			)
+		}
+		<-bus.handlerSem
+		bus.wg.Done()
+	}()
+
+	if err := handler(ctx, event); err != nil {
+		bus.logger.Error(
+			"event handler error",
+			"error", err,
+			"event_type", event.Type,
+			"event_id", event.ID,
+		)
+	}
+}
+
+func (bus *eventBus) Close() error {
+	// Stop everything
+	bus.cancel()
+
+	// Wait for consumers + handlers
+	bus.wg.Wait()
+
+	return bus.pubsub.Close()
 }

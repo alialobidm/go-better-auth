@@ -244,9 +244,10 @@ type EventHooksConfig struct {
 // =======================
 
 type EventBusConfig struct {
-	Enabled bool
-	Prefix  string
-	PubSub  PubSub
+	Enabled               bool
+	Prefix                string
+	MaxConcurrentHandlers int
+	PubSub                PubSub
 }
 
 type PluginsConfig struct {
