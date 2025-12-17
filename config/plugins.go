@@ -17,8 +17,8 @@ func NewPlugin(options ...models.PluginOption) models.Plugin {
 	plugin.SetMigrations(make([]any, 0))
 	plugin.SetRoutes(make([]models.PluginRoute, 0))
 	plugin.SetRateLimit(&models.PluginRateLimit{})
-	plugin.SetDatabaseHooks(&models.PluginDatabaseHooks{})
-	plugin.SetEventHooks(&models.PluginEventHooks{})
+	plugin.SetDatabaseHooks(nil)
+	plugin.SetEventHooks(nil)
 	plugin.SetClose(func() error {
 		return nil
 	})
@@ -66,13 +66,13 @@ func WithPluginRateLimit(rateLimit *models.PluginRateLimit) models.PluginOption 
 	}
 }
 
-func WithPluginDatabaseHooks(databaseHooks *models.PluginDatabaseHooks) models.PluginOption {
+func WithPluginDatabaseHooks(databaseHooks any) models.PluginOption {
 	return func(p models.Plugin) {
 		p.SetDatabaseHooks(databaseHooks)
 	}
 }
 
-func WithPluginEventHooks(eventHooks *models.PluginEventHooks) models.PluginOption {
+func WithPluginEventHooks(eventHooks any) models.PluginOption {
 	return func(p models.Plugin) {
 		p.SetEventHooks(eventHooks)
 	}

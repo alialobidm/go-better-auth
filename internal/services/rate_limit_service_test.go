@@ -57,11 +57,11 @@ func (m *mockPlugin) RateLimit() *models.PluginRateLimit {
 	}
 }
 
-func (m *mockPlugin) DatabaseHooks() *models.PluginDatabaseHooks {
+func (m *mockPlugin) DatabaseHooks() any {
 	return nil
 }
 
-func (m *mockPlugin) EventHooks() *models.PluginEventHooks {
+func (m *mockPlugin) EventHooks() any {
 	return nil
 }
 

@@ -45,42 +45,6 @@ type PluginRoute struct {
 
 type PluginRateLimit = RateLimitConfig
 
-type BeforeCreateHook[T any] func(ctx *PluginContext, entity *T) error
-type AfterCreateHook[T any] func(ctx *PluginContext, entity *T) error
-
-type BeforeReadHook[T any] func(ctx *PluginContext) error
-type AfterReadHook[T any] func(ctx *PluginContext, results *[]T) error
-
-type BeforeUpdateHook[T any] func(ctx *PluginContext, existing *T, updatedData map[string]any) error
-type AfterUpdateHook[T any] func(ctx *PluginContext, updated *T) error
-
-type BeforeDeleteHook[T any] func(ctx *PluginContext, entity *T) error
-type AfterDeleteHook[T any] func(ctx *PluginContext, entity *T) error
-
-type PluginDatabaseHookOperations[T any] struct {
-	BeforeCreate *BeforeCreateHook[T]
-	AfterCreate  *AfterCreateHook[T]
-
-	BeforeRead *BeforeReadHook[T]
-	AfterRead  *AfterReadHook[T]
-
-	BeforeUpdate *BeforeUpdateHook[T]
-	AfterUpdate  *AfterUpdateHook[T]
-
-	BeforeDelete *BeforeDeleteHook[T]
-	AfterDelete  *AfterDeleteHook[T]
-}
-
-type PluginDatabaseHooks map[string]PluginDatabaseHookOperations[any]
-
-type PluginEventHookPayload any
-
-type PluginEventHookFunc func(ctx *PluginContext, payload PluginEventHookPayload) error
-
-type PluginEventHooks map[string]PluginEventHookFunc
-
-type TypedPluginEventHook[T any] func(ctx *PluginContext, payload T) error
-
 type Plugin interface {
 	Metadata() PluginMetadata
 	SetMetadata(meta PluginMetadata)
@@ -103,11 +67,11 @@ type Plugin interface {
 	RateLimit() *PluginRateLimit
 	SetRateLimit(rateLimit *PluginRateLimit)
 
-	DatabaseHooks() *PluginDatabaseHooks
-	SetDatabaseHooks(hooks *PluginDatabaseHooks)
+	DatabaseHooks() any
+	SetDatabaseHooks(hooks any)
 
-	EventHooks() *PluginEventHooks
-	SetEventHooks(hooks *PluginEventHooks)
+	EventHooks() any
+	SetEventHooks(hooks any)
 
 	Close() error
 	SetClose(fn func() error)
@@ -123,8 +87,8 @@ type BasePlugin struct {
 	migrations    []any // Database migration structs (GORM models)
 	routes        []PluginRoute
 	rateLimit     *PluginRateLimit
-	databaseHooks *PluginDatabaseHooks
-	eventHooks    *PluginEventHooks
+	databaseHooks any
+	eventHooks    any
 	close         func() error
 }
 
@@ -140,8 +104,8 @@ func (p *BasePlugin) Config() PluginConfig {
 	return p.config
 }
 
-func (p *BasePlugin) SetConfig(cfg PluginConfig) {
-	p.config = cfg
+func (p *BasePlugin) SetConfig(config PluginConfig) {
+	p.config = config
 }
 
 func (p *BasePlugin) Ctx() *PluginContext {
@@ -187,19 +151,19 @@ func (p *BasePlugin) SetRateLimit(rateLimit *PluginRateLimit) {
 	p.rateLimit = rateLimit
 }
 
-func (p *BasePlugin) DatabaseHooks() *PluginDatabaseHooks {
+func (p *BasePlugin) DatabaseHooks() any {
 	return p.databaseHooks
 }
 
-func (p *BasePlugin) SetDatabaseHooks(hooks *PluginDatabaseHooks) {
+func (p *BasePlugin) SetDatabaseHooks(hooks any) {
 	p.databaseHooks = hooks
 }
 
-func (p *BasePlugin) EventHooks() *PluginEventHooks {
+func (p *BasePlugin) EventHooks() any {
 	return p.eventHooks
 }
 
-func (p *BasePlugin) SetEventHooks(hooks *PluginEventHooks) {
+func (p *BasePlugin) SetEventHooks(hooks any) {
 	p.eventHooks = hooks
 }
 
