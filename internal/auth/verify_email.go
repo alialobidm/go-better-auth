@@ -65,7 +65,7 @@ func (s *Service) handleEmailVerification(ver *models.Verification) (*VerifyEmai
 		slog.Warn("failed to delete verification", "verification_id", ver.ID, "error", err)
 	}
 
-	s.callHook(s.config.EventHooks.OnEmailVerified, user)
+	s.callEventHook(s.config.EventHooks.OnEmailVerified, user)
 	s.emitEvent(models.EventEmailVerified, user)
 
 	return &VerifyEmailResult{
@@ -108,7 +108,7 @@ func (s *Service) handleEmailChange(ver *models.Verification) (*VerifyEmailResul
 		slog.Warn("failed to delete verification", "verification_id", ver.ID, "error", err)
 	}
 
-	s.callHook(s.config.EventHooks.OnEmailChanged, user)
+	s.callEventHook(s.config.EventHooks.OnEmailChanged, user)
 	s.emitEvent(models.EventEmailChanged, user)
 
 	return &VerifyEmailResult{

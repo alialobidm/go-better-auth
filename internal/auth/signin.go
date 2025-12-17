@@ -59,7 +59,7 @@ func (s *Service) SignInWithEmailAndPassword(email string, password string, call
 		return nil, fmt.Errorf("%w: %w", ErrSessionCreationFailed, err)
 	}
 
-	s.callHook(s.config.EventHooks.OnUserLoggedIn, user)
+	s.callEventHook(s.config.EventHooks.OnUserLoggedIn, user)
 	s.emitEvent(models.EventUserLoggedIn, user)
 
 	if s.config.EmailVerification.SendOnSignIn && !user.EmailVerified {

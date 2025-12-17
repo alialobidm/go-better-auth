@@ -9,8 +9,8 @@ import (
 	"github.com/GoBetterAuth/go-better-auth/models"
 )
 
-// callHook safely calls a hook function if it's not nil
-func (s *Service) callHook(hook func(models.User) error, user *models.User) {
+// callEventHook safely calls an event hook function if it's not nil
+func (s *Service) callEventHook(hook func(models.User) error, user *models.User) {
 	if hook != nil && user != nil {
 		go hook(*user)
 	}

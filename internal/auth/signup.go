@@ -101,7 +101,7 @@ func (s *Service) SignUpWithEmailAndPassword(name string, email string, password
 		}
 	}
 
-	s.callHook(s.config.EventHooks.OnUserSignedUp, newUser)
+	s.callEventHook(s.config.EventHooks.OnUserSignedUp, newUser)
 	s.emitEvent(models.EventUserSignedUp, newUser)
 
 	return &SignUpResult{
