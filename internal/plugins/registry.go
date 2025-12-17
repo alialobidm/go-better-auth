@@ -24,7 +24,7 @@ func NewPluginRegistry(config *models.Config, api *models.Api, eventBus models.E
 	return &PluginRegistry{
 		config:    config,
 		pluginCtx: ctx,
-		plugins:   []models.Plugin{},
+		plugins:   make([]models.Plugin, 0),
 	}
 }
 
