@@ -10,9 +10,7 @@ func NewPlugin(options ...models.PluginOption) models.Plugin {
 	plugin := &models.BasePlugin{}
 	// Set default values
 	plugin.SetMetadata(models.PluginMetadata{})
-	plugin.SetConfig(models.PluginConfig{
-		Enabled: true,
-	})
+	plugin.SetConfig(models.PluginConfig{})
 	plugin.SetInit(func(ctx *models.PluginContext) error {
 		return nil
 	})
