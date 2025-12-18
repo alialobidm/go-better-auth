@@ -54,7 +54,7 @@ func (rw *responseBufferWriter) SetCookie(cookie *http.Cookie) {
 // Redirect sets up a redirect response and marks the request as handled.
 func Redirect(ctx *models.EndpointHookContext, url string, status int) {
 	if status == 0 {
-		status = http.StatusFound // Default to 302 Found
+		status = http.StatusSeeOther // Default to 303 See Other
 	}
 	ctx.ResponseStatus = status
 	ctx.ResponseHeaders = map[string][]string{"Location": {url}}
