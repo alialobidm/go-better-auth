@@ -16,20 +16,12 @@ type PluginConfig struct {
 	Options any
 }
 
-type PluginMiddleware struct {
-	Auth          func() func(http.Handler) http.Handler
-	OptionalAuth  func() func(http.Handler) http.Handler
-	CorsAuth      func() func(http.Handler) http.Handler
-	CSRF          func() func(http.Handler) http.Handler
-	RateLimit     func() func(http.Handler) http.Handler
-	EndpointHooks func() func(http.Handler) http.Handler
-}
-
 type PluginContext struct {
-	Config     *Config
-	Api        *Api
-	EventBus   EventBus
-	Middleware *PluginMiddleware
+	Config          *Config
+	Api             AuthApi
+	EventBus        EventBus
+	Middleware      *ApiMiddleware
+	WebhookExecutor WebhookExecutor
 }
 
 type PluginRouteMiddleware func(http.Handler) http.Handler
@@ -67,11 +59,17 @@ type Plugin interface {
 	RateLimit() *PluginRateLimit
 	SetRateLimit(rateLimit *PluginRateLimit)
 
+	EndpointHooks() any
+	SetEndpointHooks(hooks any)
+
 	DatabaseHooks() any
 	SetDatabaseHooks(hooks any)
 
 	EventHooks() any
 	SetEventHooks(hooks any)
+
+	Webhooks() any
+	SetWebhooks(hooks any)
 
 	Close() error
 	SetClose(fn func() error)
@@ -87,8 +85,10 @@ type BasePlugin struct {
 	migrations    []any // Database migration structs (GORM models)
 	routes        []PluginRoute
 	rateLimit     *PluginRateLimit
+	endpointHooks any
 	databaseHooks any
 	eventHooks    any
+	webhooks      any
 	close         func() error
 }
 
@@ -151,6 +151,14 @@ func (p *BasePlugin) SetRateLimit(rateLimit *PluginRateLimit) {
 	p.rateLimit = rateLimit
 }
 
+func (p *BasePlugin) EndpointHooks() any {
+	return p.endpointHooks
+}
+
+func (p *BasePlugin) SetEndpointHooks(hooks any) {
+	p.endpointHooks = hooks
+}
+
 func (p *BasePlugin) DatabaseHooks() any {
 	return p.databaseHooks
 }
@@ -167,6 +175,14 @@ func (p *BasePlugin) SetEventHooks(hooks any) {
 	p.eventHooks = hooks
 }
 
+func (p *BasePlugin) Webhooks() any {
+	return p.webhooks
+}
+
+func (p *BasePlugin) SetWebhooks(hooks any) {
+	p.webhooks = hooks
+}
+
 func (p *BasePlugin) Close() error {
 	if p.close != nil {
 		return p.close()
@@ -176,4 +192,12 @@ func (p *BasePlugin) Close() error {
 
 func (p *BasePlugin) SetClose(fn func() error) {
 	p.close = fn
+}
+
+type PluginRegistry interface {
+	Register(p Plugin)
+	InitAll() error
+	RunMigrations() error
+	Plugins() []Plugin
+	CloseAll()
 }
