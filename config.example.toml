@@ -24,7 +24,7 @@ level = "debug"  # Options: "debug", "info", "warn", "error"
 provider = "sqlite"
 # SECURITY NOTE: It is recommended to set the 'connection_string' via the 
 # DATABASE_URL environment variable rather than hardcoding it here.
-connection_string = ""
+connection_string = "auth.db"
 max_open_conns = 25
 max_idle_conns = 25
 conn_max_lifetime = "1m"

@@ -69,6 +69,7 @@ func NewConfig(options ...models.ConfigOption) *models.Config {
 		EndpointHooks: models.EndpointHooksConfig{},
 		DatabaseHooks: models.DatabaseHooksConfig{},
 		EventHooks:    models.EventHooksConfig{},
+		Webhooks:      models.WebhooksConfig{},
 		EventBus: models.EventBusConfig{
 			Enabled:               false,
 			MaxConcurrentHandlers: 10,

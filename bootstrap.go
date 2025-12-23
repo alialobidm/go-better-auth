@@ -173,7 +173,6 @@ func InitConfigManager(config *models.Config) (models.ConfigManager, error) {
 	switch config.Mode {
 	case models.ModeLibrary:
 		{
-			slog.Debug("Running in library mode - no config manager needed")
 			return nil, nil
 		}
 	case models.ModeStandalone:

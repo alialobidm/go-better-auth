@@ -56,7 +56,6 @@ func (w *WebhookExecutor) ExecuteWebhook(webhook *models.WebhookConfig, payload 
 		req.Header.Set(key, value)
 	}
 
-	w.logger.Debug("Executing webhook", "url", webhook.URL)
 	resp, err := w.client.Do(req)
 	if err != nil {
 		w.logger.Error("Webhook request failed", "url", webhook.URL, "error", err)
@@ -69,6 +68,5 @@ func (w *WebhookExecutor) ExecuteWebhook(webhook *models.WebhookConfig, payload 
 		return fmt.Errorf("webhook returned status code %d", resp.StatusCode)
 	}
 
-	w.logger.Debug("Webhook executed successfully", "url", webhook.URL, "status", resp.StatusCode)
 	return nil
 }

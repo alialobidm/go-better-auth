@@ -78,7 +78,6 @@ func (s *RateLimitServiceImpl) Allow(ctx context.Context, key string, req *http.
 	}
 
 	if count >= max {
-		s.logger.Debug("rate limit exceeded", slog.String("key", key), slog.Int("count", count), slog.Int("max", max))
 		return false, nil
 	}
 

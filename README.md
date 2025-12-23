@@ -32,7 +32,7 @@
 - ⚙️ **Flexible Configuration** – Whether you're embedding as a library or running as a server, GoBetterAuth gives you full control over your authentication logic.
 - 🛡️ **Enhanced Security** – CSRF protection.
 - ⚡ **Rate Limiting** – Configurable rate limiting with secondary storage.
-- 🪝 **Hooks System & Webhooks** – Powerful hooks for deep customization: Endpoint hooks allow you to modify requests and responses in the lifecycle. Database hooks let you tap into DB events like BeforeCreate and AfterCreate on entities, with support for custom hooks in plugins. Event hooks run after key actions, enabling event-driven workflows. **Webhooks** are also supported, so you can trigger external services when authentication events occur.
+- 🪝 **Hooks System** – Powerful hooks for deep customization: **Endpoint Hooks** allow you to modify requests and responses in the lifecycle. **Database Hooks** let you tap into DB events like BeforeCreate and AfterCreate on entities, with support for custom hooks in plugins. **Event Hooks** run after key actions, enabling event-driven workflows. **Webhooks** are also supported, so you can trigger external services when authentication events occur.
 - 📨 **Event Bus** – Built-in event bus enables event-driven architecture, allowing you to publish and subscribe to authentication and authorization events for seamless integration with external systems and custom workflows.
 - 🔌 **Plugin System** – Extensible plugin architecture for custom business logic and routes. Including flexible plugin interface to implement all kinds of plugins.
 
